@@ -5,14 +5,16 @@ type Note = {
   text: string;
 };
 
-const API_URL = "https://nityasnotes-backend.onrender.com";
-
 function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [input, setInput] = useState("");
-  
+  const [loading, setLoading] = useState(false);
 
-  // GET notes
+  const API_URL = "https://nityasnotes-backend.onrender.com";
+
+  // -------------------------
+  // GET NOTES (source of truth)
+  // -------------------------
   async function fetchNotes() {
     try {
       const res = await fetch(`${API_URL}/notes`);
@@ -23,69 +25,59 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    fetchNotes();
-  }, []);
-
-  // ADD note (optimistic UI update)
+  // -------------------------
+  // ADD NOTE
+  // -------------------------
   async function addNote() {
     if (!input.trim()) return;
 
-    const tempText = input;
-
-    // optimistic update (instant UI)
-    const tempNote: Note = {
-      id: Date.now(), // temporary id
-      text: tempText,
-    };
-
-    setNotes((prev) => [...prev, tempNote]);
-    setInput("");
+    setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/notes`, {
+      await fetch(`${API_URL}/notes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: tempText }),
+        body: JSON.stringify({ text: input }),
       });
 
-      const newNote = await res.json();
-
-      // replace temp note with real note from backend
-      setNotes((prev) =>
-        prev.map((note) => (note.id === tempNote.id ? newNote : note))
-      );
+      setInput("");
+      await fetchNotes(); // IMPORTANT: always refresh from backend
     } catch (err) {
       console.error("Failed to add note:", err);
-
-      // rollback if failed
-      setNotes((prev) => prev.filter((n) => n.id !== tempNote.id));
+    } finally {
+      setLoading(false);
     }
   }
 
-  // DELETE note (instant UI update)
+  // -------------------------
+  // DELETE NOTE
+  // -------------------------
   async function deleteNote(id: number) {
-    const oldNotes = notes;
-
-    // optimistic remove
-    setNotes((prev) => prev.filter((note) => note.id !== id));
-
     try {
       await fetch(`${API_URL}/notes/${id}`, {
         method: "DELETE",
       });
+
+      await fetchNotes(); // refresh after delete
     } catch (err) {
       console.error("Failed to delete note:", err);
-
-      // rollback
-      setNotes(oldNotes);
     }
   }
 
+  // -------------------------
+  // INITIAL LOAD
+  // -------------------------
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  // -------------------------
+  // UI
+  // -------------------------
   return (
-    <div style={{ padding: "20px", maxWidth: "500px", margin: "auto" }}>
+    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>Nitya's Notes</h1>
 
       <div style={{ display: "flex", gap: "10px" }}>
@@ -96,7 +88,9 @@ function App() {
           style={{ flex: 1 }}
         />
 
-        <button onClick={addNote}>Add</button>
+        <button onClick={addNote} disabled={loading}>
+          {loading ? "Adding..." : "Add"}
+        </button>
       </div>
 
       <ul style={{ marginTop: "20px" }}>

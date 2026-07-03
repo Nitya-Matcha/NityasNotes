@@ -23,10 +23,12 @@ class NoteUpdate(BaseModel):
 
 app = FastAPI()
 
-# CORS (safe for dev + deployment)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later when deploying frontend
+    allow_origins=[
+        "http://localhost:5173",
+        "https://nityas-notes-six.vercel.app/"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
