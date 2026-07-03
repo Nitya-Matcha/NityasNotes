@@ -1,54 +1,27 @@
-from fastapi import FastAPI, Depends, HTTPException
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from database import engine, SessionLocal, Base
 import models
 
-# -------------------------
-# Schemas (Pydantic)
-# -------------------------
-
-class NoteCreate(BaseModel):
-    text: str
-
-class NoteUpdate(BaseModel):
-    text: str
-
-
-# -------------------------
-# App setup
-# -------------------------
-
-
+# IMPORTANT: create app FIRST
 app = FastAPI()
 
-origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://nityas-notes-six.vercel.app"  # <-- change this
-]
-
+# IMPORTANT: CORS MUST BE IMMEDIATELY AFTER app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # debug mode
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------
-# Create DB tables
-# -------------------------
-
+# create tables
 Base.metadata.create_all(bind=engine)
 
-
-# -------------------------
-# DB dependency
-# -------------------------
-
+# DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -56,54 +29,43 @@ def get_db():
     finally:
         db.close()
 
+# request schema
+class NoteCreate(BaseModel):
+    text: str
 
-# -------------------------
-# ROUTES
-# -------------------------
-
-# CREATE NOTE
+# CREATE
 @app.post("/notes")
 def create_note(note: NoteCreate, db: Session = Depends(get_db)):
     new_note = models.Note(text=note.text)
-
     db.add(new_note)
     db.commit()
     db.refresh(new_note)
-
     return new_note
 
-
-# GET ALL NOTES
+# READ
 @app.get("/notes")
 def get_notes(db: Session = Depends(get_db)):
     return db.query(models.Note).all()
 
-
-# DELETE NOTE
+# DELETE
 @app.delete("/notes/{note_id}")
 def delete_note(note_id: int, db: Session = Depends(get_db)):
     note = db.query(models.Note).filter(models.Note.id == note_id).first()
-
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        return {"error": "Note not found"}
 
     db.delete(note)
     db.commit()
+    return {"message": "deleted"}
 
-    return {"message": "note deleted"}
-
-
-# UPDATE NOTE
+# UPDATE
 @app.put("/notes/{note_id}")
-def update_note(note_id: int, updated_note: NoteUpdate, db: Session = Depends(get_db)):
+def update_note(note_id: int, updated: NoteCreate, db: Session = Depends(get_db)):
     note = db.query(models.Note).filter(models.Note.id == note_id).first()
-
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        return {"error": "Note not found"}
 
-    note.text = updated_note.text
-
+    note.text = updated.text
     db.commit()
     db.refresh(note)
-
     return note
