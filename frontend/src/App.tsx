@@ -10,7 +10,7 @@ const API_URL = "https://nityasnotes-backend.onrender.com";
 function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  
 
   // GET notes
   async function fetchNotes() {
