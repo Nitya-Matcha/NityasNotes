@@ -1,9 +1,13 @@
 from fastapi import FastAPI, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, SessionLocal, Base
 import models
+
+class NoteCreate(BaseModel):
+    text: str
 
 app = FastAPI()
 
@@ -28,11 +32,13 @@ def get_db():
 
 # CREATE NOTE
 @app.post("/notes")
-def create_note(note: dict, db: Session = Depends(get_db)):
-    new_note = models.Note(text=note["text"])
+def create_note(note: NoteCreate, db: Session = Depends(get_db)):
+    new_note = models.Note(text=note.text)
+
     db.add(new_note)
     db.commit()
     db.refresh(new_note)
+
     return new_note
 
 # GET NOTES
@@ -66,14 +72,3 @@ def update_note(note_id: int, updated_note: dict, db: Session = Depends(get_db))
 
     return note
 
-@app.delete("/notes/{note_id}")
-def delete_note(note_id: int, db: Session = Depends(get_db)):
-    note = db.query(models.Note).filter(models.Note.id == note_id).first()
-
-    if not note:
-        return {"error": "Note not found"}
-
-    db.delete(note)
-    db.commit()
-
-    return {"message": "note deleted"}
