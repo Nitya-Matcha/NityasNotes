@@ -1,3 +1,4 @@
+from services.notes_service import save_note
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -36,11 +37,7 @@ class NoteCreate(BaseModel):
 # CREATE
 @app.post("/notes")
 def create_note(note: NoteCreate, db: Session = Depends(get_db)):
-    new_note = models.Note(text=note.text)
-    db.add(new_note)
-    db.commit()
-    db.refresh(new_note)
-    return new_note
+    return save_note(db, note.text)
 
 # READ
 @app.get("/notes")
