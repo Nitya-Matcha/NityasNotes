@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from services.internship_finder import create_sample_internship_note
 
 from database import engine, SessionLocal, Base
 import models
@@ -66,3 +67,7 @@ def update_note(note_id: int, updated: NoteCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(note)
     return note
+
+@app.post("/internships/test")
+def test_internship(db: Session = Depends(get_db)):
+    return create_sample_internship_note(db)
